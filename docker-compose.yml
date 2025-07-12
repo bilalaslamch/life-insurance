@@ -1,0 +1,55 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: life_insurance_db
+    environment:
+      POSTGRES_DB: life_insurance_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - life_insurance_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # NestJS Backend
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: life_insurance_backend
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: 123456
+      DB_NAME: life_insurance_db
+    ports:
+      - "3001:3001"
+    volumes:
+      # Mount source code for development (comment out for production)
+      - ./src:/app/src
+      - ./package.json:/app/package.json
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - life_insurance_network
+    restart: unless-stopped
+    # Use start:dev for development, start:prod for production
+    command: npm run start:dev
+
+volumes:
+  postgres_data:
+
+networks:
+  life_insurance_network:
+    driver: bridge 
